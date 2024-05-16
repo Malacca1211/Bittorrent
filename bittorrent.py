@@ -22,7 +22,8 @@ def load_torrent_file(torrent_path):
         torrent_contents = f.read()
     torrent_data = bencodepy.decode(torrent_contents)
     announce_url = torrent_data[b'announce'].decode('utf-8')
-    peer_list = [('127.0.0.1', 6881)]  # 这里应该是动态解析的，目前用静态数据代替
+    peer_list = tools.get_peers_from_tracker(torrent_data)
+    # peer_list = [('127.0.0.1', 6881)]  # 这里应该是动态解析的，目前用静态数据代替
     return {'announce': announce_url, 'peers': peer_list}
 
 def start_server(announce_url):
