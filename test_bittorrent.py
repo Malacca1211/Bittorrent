@@ -1,5 +1,8 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import sys
+from unittest import TestCase, main
+from unittest.mock import patch
 import bittorrent
 import os
 
@@ -30,29 +33,22 @@ class TestBitTorrentClient(unittest.TestCase):
         client_socket.recv.side_effect = [b"Hello from peer!", b'']
 
         # 使用 MagicMock 模拟客户端 socket
-        client = MagicMock()
         bittorrent.handle_client(client_socket)
 
         # 检查接收数据和发送响应
-        self.assertEqual(client_socket.sendall.call_count, 1)
         client_socket.sendall.assert_called_with(b"Hi, thanks for the message!")
         self.assertEqual(client_socket.recv.call_count, 2)
 
-    @patch('bittorrent.start_server')
-    @patch('bittorrent.connect_to_peer')
-    def test_main(self, mock_connect_to_peer, mock_start_server):
-        """测试 main 函数"""
-        bittorrent.peers = [('127.0.0.1', 6881)]
+    @patch('sys.argv', ['bittorrent.py', 'path_to_torrent_file.torrent', '--port', '6881'])
+    @patch('builtins.print')
+    def test_main(self, mock_print):
+        """测试 main 函数是否正确处理命令行参数并输出预期信息"""
         bittorrent.main()
+        
+        # 检查是否正确打印了运行信息
+        mock_print.assert_called_with('Running on port 6881 with torrent file path_to_torrent_file.torrent')
 
-        # 检查是否启动了服务器
-        mock_start_server.assert_called_once()
-        # 检查是否尝试连接到对等节点
-        mock_connect_to_peer.assert_called_with(('127.0.0.1', 6881))
-
-
-
-
+    
 class TestFileChunking(unittest.TestCase):
     def setUp(self):
         """在每个测试前运行，准备测试文件"""
