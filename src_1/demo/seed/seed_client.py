@@ -1,0 +1,11 @@
+import sys
+sys.path.append( '../../backend/')
+
+from client import *
+from torrent import *
+
+file_name = '../test.mp4'
+test_torrent_file = file_name+'.torrent'
+test_config_file = './client_config.json'
+client = Client(test_torrent_file,test_config_file)
+client.start()
