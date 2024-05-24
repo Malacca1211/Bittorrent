@@ -15,15 +15,16 @@ from  utilities import *
 # from collection import OrderedDict
 
 DEFAULT_PIECE_SIZE = 3000
-DEFAULT_CLIENT_PORT = 6667
+DEFAULT_TRACKER_PORT = 6667
+TRACKER_IP = get_host_ip()
 
 
 def make_torrent_file(file_name):
     """使用本机ip及文件制作torrent文件,会在当前目录下命名为file_name.torrent存放"""
     
     torrent = {}
-    torrent['announce'] = get_host_ip() # 获取本机IP
-    torrent['port'] = DEFAULT_CLIENT_PORT # 默认本机监听端口号
+    torrent['announce'] = TRACKER_IP # 获取本机IP
+    torrent['port'] = DEFAULT_TRACKER_PORT # 默认本机监听端口号
     torrent['comment'] = 'test'
     torrent['info'] = {}
     torrent['info']['piece_length'] = DEFAULT_PIECE_SIZE # 默认块大小
@@ -34,7 +35,7 @@ def make_torrent_file(file_name):
     torrent['info']['file_length'] = os.path.getsize(file_name)
     piece_length = torrent['info']['piece_length']
     with open(file_name,'rb') as file:
-        while 1:
+        while True:
             piece_contents = file.read(piece_length)
             if not piece_contents:
                 break
@@ -75,10 +76,10 @@ def same_as_torrent(torrent_file_name, download_file):
             if hash_piece != torrent['info']['piece_hash'][piece_index]:
                 diff_status = 0
                 diff_show_status[piece_index] = 1
-                # 去掉注释，可以看到是第几块数据块出现了问题
-                # print(piece_index,'： -----------------------------------------')
-                # print(hash_piece)
-                # print(torrent['info']['piece_hash'][piece_index])
+                # 看是第几块数据块出现了问题
+                print(piece_index,'： -----------------------------------------')
+                print(hash_piece)
+                print(torrent['info']['piece_hash'][piece_index])
             # 无论如何，都要+1，去读下一个包
             piece_index += 1
     # print(diff_show_status)

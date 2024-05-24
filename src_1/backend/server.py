@@ -11,19 +11,7 @@ import os
 import utilities
 import threading
 from rdt_socket import *
-from server_config import *
 import logging 
-import psutil
-
-# kill the process in port
-def kill_process_by_port(port):
-    for conn in psutil.net_connections():
-        if conn.laddr.port == port:
-            pid = conn.pid
-            os.kill(pid, 9)  # Send SIGKILL signal to the process
-            print(f"Process running on port {port} (PID: {pid}) killed.")
-            return
-    print(f"No process found running on port {port}.")
 
 
 
@@ -36,8 +24,11 @@ logging.basicConfig(
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
+
+#! nt: Some parameters of Tracker, you can change there
 SERVER_IP = utilities.get_host_ip()
 SERVER_PORT = 6667
+MAX_TCP_LINK = 8
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -60,13 +51,15 @@ class ServerMonitor(threading.Thread):
                 # #TODO: should send quit msg to all tcp link
                 # unknown bug. maybe it is becaz not check msg type in all place in client.py
                 # talk with WYF
-                kill_process_by_port(SERVER_PORT)
+                utilities.kill_process_by_port(SERVER_PORT)
+                logger.info(f"Process on port {SERVER_PORT} has been killed")
                 os._exit(0)
                 
             elif enter == 'p':
                 # 打印在线peer
                 logger.info('Pring the available peers list')
                 logger.info(available_peers)
+
 
 class Peer(object):
     """
@@ -84,6 +77,7 @@ class Peer(object):
         return self.id == rhs.id and self.ip == rhs.ip and self.port == rhs.port
         
 available_peers = []
+
 
 # start callback
 class Server(threading.Thread):
@@ -115,7 +109,7 @@ class Server(threading.Thread):
 
                 if id not in [peer.id for peer in available_peers]:
                     available_peers.append(Peer(ip, port, id))
-                    logger.debug('connected by %s', (ip, port, id))
+                    logger.debug('Peer: %s has connectd with Tracker', (ip, port, id))
                 else:
                     logger.warning('peer already in list, ip %s port %d id %s', 
                         ip, 

@@ -3,7 +3,8 @@
 utilities functions here
 '''
 import json
-import socket
+import psutil
+import os
 
 def objEncode(obj):
     """ obj，返回binary对象 """
@@ -32,3 +33,11 @@ def get_host_ip():
     #    s.close()
     #return ip
     return '127.0.0.1'
+
+# kill the process in port
+def kill_process_by_port(port):
+    for conn in psutil.net_connections():
+        if conn.laddr.port == port:
+            pid = conn.pid
+            os.kill(pid, 9)  # Send SIGKILL signal to the process
+            return
