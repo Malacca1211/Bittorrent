@@ -16,7 +16,8 @@ from  utilities import *
 
 DEFAULT_PIECE_SIZE = 3000
 DEFAULT_TRACKER_PORT = 6667
-TRACKER_IP = get_host_ip()
+#TRACKER_IP = '10.0.0.1' 
+TRACKER_IP  = '10.180.57.167'
 
 
 def make_torrent_file(file_name):

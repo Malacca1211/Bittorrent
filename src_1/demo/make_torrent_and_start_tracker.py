@@ -8,7 +8,6 @@ SRC_PATH = '../backend/'
 sys.path.append(SRC_PATH)
 
 from torrent import * #! 此处报错可忽略
-from server import *
 
 
 full_file = './seed/test.mp4'

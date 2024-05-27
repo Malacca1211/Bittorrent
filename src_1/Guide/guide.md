@@ -1,3 +1,13 @@
+# Notation:
+- kill process:
+```shell
+netstat -nl | grep 6667
+sudo fuser -k 6653/tcp
+```
+
+- create mininet topography
+`sudo mn --topo=single,3`
+
 # How to run
 ## `C2` get file from `seed`
 1. `# 在demo文件夹下
@@ -30,3 +40,10 @@ python3 test2_client.py`
 > ![](2024-05-22-21-49-43.png)
 
 
+## Test in mininet
+
+### Some common questions
+- install the python package in `mininet xterm`
+```shell
+sudo mnexec pip install psutil
+```

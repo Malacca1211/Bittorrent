@@ -222,17 +222,18 @@ class Client(threading.Thread):
     '''
     client side
     '''
-    def __init__(self, torrent_file_name, config_file_name):
+    def __init__(self, torrent_file_name, config_file_name, client_ip):
         """ 对客户端对象，初始化客户端ip，端口，并读取种子文件，将种子元数据存到客户端中 """
         threading.Thread.__init__(self)
         # 初始化种子文件元数据
         self.begin = time.time()
         self.metadata = torrent.read_torrent_file(torrent_file_name)
+        logger.info(f"Tracker IP: {self.metadata['announce']}; port: {self.metadata['port']}")
         self.pieces_num = len(self.metadata['info']['piece_hash'])
         # TODO:bitfield需要思考如何处理，这个应该能够被各个连接访问
         self.bitfield = bitarray.bitarray([0 for _ in range(1, self.pieces_num+1)])
         # 得到本机ip并且作为客户端的成员变量存进来
-        self.client_ip = utilities.get_host_ip()
+        self.client_ip = client_ip
         self.client_port = 0
         # 从配置文件中读取数据,同时更新client_port
         self.load_config_file(config_file_name)

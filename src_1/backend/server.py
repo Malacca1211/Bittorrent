@@ -26,9 +26,13 @@ logger.setLevel(logging.DEBUG)
 
 
 #! nt: Some parameters of Tracker, you can change there
-SERVER_IP = utilities.get_host_ip()
-SERVER_PORT = 6667
+# SERVER_IP = utilities.get_host_ip()
+#! Mininet Test
+#SERVER_IP = '10.0.0.1'
+SERVER_IP = '10.180.57.167'
+SERVER_PORT = 5000
 MAX_TCP_LINK = 8
+
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
