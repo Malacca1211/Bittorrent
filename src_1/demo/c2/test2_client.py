@@ -8,6 +8,7 @@ from torrent import *
 file_name = 'test.mp4'
 test_torrent_file = '../{}.torrent'.format(file_name)
 test_config_file = './client2_config.json'
-client2_ip = '10.0.0.3'
-client = Client(test_torrent_file, test_config_file, client_ip = client2_ip)
+c2_ip = '10.0.0.3'
+# c2_ip = '127.0.0.1'
+client = Client(test_torrent_file, test_config_file, client_ip = c2_ip)
 client.start()

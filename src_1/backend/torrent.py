@@ -15,17 +15,15 @@ from  utilities import *
 # from collection import OrderedDict
 
 DEFAULT_PIECE_SIZE = 3000
-DEFAULT_TRACKER_PORT = 6667
-#TRACKER_IP = '10.0.0.1' 
-TRACKER_IP  = '10.180.57.167'
 
 
-def make_torrent_file(file_name):
-    """使用本机ip及文件制作torrent文件,会在当前目录下命名为file_name.torrent存放"""
+def make_torrent_file(file_name, tracker_ip, tracker_port):
+
+    """使用本机ip及文件制作torrent文件,会在torrentFiles下命名为file_name.torrent存放"""
     
     torrent = {}
-    torrent['announce'] = TRACKER_IP # 获取本机IP
-    torrent['port'] = DEFAULT_TRACKER_PORT # 默认本机监听端口号
+    torrent['announce'] = tracker_ip # 获取本机IP
+    torrent['port'] = tracker_port # 默认本机监听端口号
     torrent['comment'] = 'test'
     torrent['info'] = {}
     torrent['info']['piece_length'] = DEFAULT_PIECE_SIZE # 默认块大小

@@ -28,8 +28,7 @@ logger.setLevel(logging.DEBUG)
 #! nt: Some parameters of Tracker, you can change there
 # SERVER_IP = utilities.get_host_ip()
 #! Mininet Test
-#SERVER_IP = '10.0.0.1'
-SERVER_IP = '10.180.57.167'
+SERVER_IP = '10.0.0.1'
 SERVER_PORT = 5000
 MAX_TCP_LINK = 8
 
@@ -50,18 +49,18 @@ class ServerMonitor(threading.Thread):
         while True:
             enter = input('(you can quit if enter q)...\n(or you can print the available peers list if enter p)...\n')
             if enter == 'q':
-                logger.warning('server quit. all tcp link WILL NOT SAVE')
+                logger.warning('======= server quit. all tcp link WILL NOT SAVE ========')
                 # self.server.fouceQuit() 
                 # #TODO: should send quit msg to all tcp link
                 # unknown bug. maybe it is becaz not check msg type in all place in client.py
                 # talk with WYF
-                utilities.kill_process_by_port(SERVER_PORT)
+                # utilities.kill_process_by_port(SERVER_PORT)
                 logger.info(f"Process on port {SERVER_PORT} has been killed")
                 os._exit(0)
                 
             elif enter == 'p':
                 # 打印在线peer
-                logger.info('Pring the available peers list')
+                logger.info('======= Pring the available peers list ========')
                 logger.info(available_peers)
 
 
