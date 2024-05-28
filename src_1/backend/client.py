@@ -325,7 +325,7 @@ class Client(threading.Thread):
 
     def disconnect_to_server(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        logger.debug('DIS-connect to tracker : {}:{} '.format(self.metadata['announce'],str(self.metadata['port'])))
+        logger.debug('=======DIS-connect to tracker : {}:{} ======='.format(self.metadata['announce'],str(self.metadata['port'])))
         sock.connect((self.metadata['announce'], self.metadata['port']))
         rdt_s = rdt_socket.rdt_socket(sock)
         rdt_s.sendBytes(utilities.objEncode(self.make_resquest(COMPLETED_EVENT)))
@@ -338,7 +338,7 @@ class Client(threading.Thread):
         """ 向tracker发起链接，请求peer list """
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         logger.debug('connect to tracker : {}:{} '.format(self.metadata['announce'],str(self.metadata['port'])))
-        sock.connect((self.metadata['announce'], self.metadata['port']))
+        sock.connect((self.metadata['announce'], self.metadata['port'])) #TODO
         rdt_s = rdt_socket.rdt_socket(sock)
         rdt_s.sendBytes(utilities.objEncode(self.make_resquest(START_EVENT)))
         data = rdt_s.recvBytes()
@@ -353,6 +353,7 @@ class Client(threading.Thread):
             #if idx >= 4: return # TODO: add constant here
             peer_ip = peer_info['peer-ip']
             peer_port = peer_info['peer-port']
+            print('trying to connect to peer {}:{}'.format(peer_ip, peer_port))
             logger.debug('trying to connect to peer {}:{}'.format(peer_ip, peer_port))
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((peer_ip, peer_port))
