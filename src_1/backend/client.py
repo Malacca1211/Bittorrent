@@ -57,6 +57,11 @@ class PeerConnection(threading.Thread):
         
         self.request_piece_index = 0
         self.request_piece_hash = 0
+        
+        self.data_sent = 0
+        self.start_time = time.time()
+        self.peer_choked = True
+        self.is_interested = False
 
         logger.info('peer init connection %s', self.socket.s.getsockname())
 
@@ -115,6 +120,8 @@ class PeerConnection(threading.Thread):
                 cur_piece_index = recv_msg.piece_index
                 cur_piece_binary_data = pieces_manager.get_piece(cur_piece_index)
                 self.send_message(Piece(cur_piece_index, cur_piece_binary_data))
+                self.data_sent += len(cur_piece_binary_data)
+                self.peer_choked = False
             elif self.send_file_state.is_01() and type(recv_msg) == UnInterested:
                 # 当我处于可以发送文件的状态，但是peer收完了，不感兴趣
                 self.send_file_state.to_10()
@@ -215,7 +222,18 @@ class PeerConnection(threading.Thread):
                 time.sleep(random.random())
                 # print(list(left_pieces.queue))
                 continue
-        
+    
+    def get_upload_speed(self):
+        elapsed_time = time.time() - self.start_time
+        if elapsed_time > 0:
+            upload_speed = self.data_sent / elapsed_time
+        else:
+            upload_speed = 0
+        return upload_speed
+    
+    def reset_upload_speed(self):
+        self.data_sent = 0
+        self.start_time = time.time()
 
 
 class Client(threading.Thread):
@@ -268,8 +286,11 @@ class Client(threading.Thread):
         # 向N个peer主动发起链接
         self.establish_link()
         # 启动监听线程
-        self.client_monitor.start()
 
+        self.unchoke_manager = UnchokeManager(self)
+        self.unchoke_manager.start()
+
+        self.client_monitor.start()
         # 开始调度线程
         while True:
             """
@@ -277,7 +298,7 @@ class Client(threading.Thread):
             1. 【TODO:暂时不实现，为了先测试】 建立连接，如果连接数少于MAX，就尝试获取更多的可用peer，从中找到自己没有连的peer，然后连接他 
             2. 当文件传输完成，比对哈希值，并存好文件，输出相应信息，等待用户主动结束
             """
-            # print(pieces_manager.is_completed())
+            # print(pieces_manager.is_completed())  
             if pieces_manager.is_completed():
                 if pieces_manager.merge_full_data_to_file():
                     self.end = time.time()
@@ -360,6 +381,24 @@ class Client(threading.Thread):
             'event': event
         }
         return peer_list_request_obj
+    
+    def manage_unchoking(self):
+        # 定期计算每个对等方的上传速度，并选择最快的几个进行unchoke
+        peer_speeds = [(peer, peer.get_upload_speed()) for peer in self.client_monitor.peer_connections]
+        peer_speeds.sort(key=lambda x: x[1], reverse=True)
+        top_peers = peer_speeds[:4]  # 假设我们选择最快的4个对等方进行unchoke
+        
+        for peer, speed in peer_speeds:
+            if (peer, speed) in top_peers:
+                if peer.peer_choked:
+                    peer.send_message(UnChoke())
+                    peer.peer_choked = False
+            else:
+                if not peer.peer_choked:
+                    peer.send_message(Choke())
+                    peer.peer_choked = True
+            
+            peer.reset_upload_speed()
 
 
 class ClientMonitor(threading.Thread):
@@ -370,6 +409,7 @@ class ClientMonitor(threading.Thread):
         threading.Thread.__init__(self)
         self.client_ip = client_ip
         self.client_port = client_port
+        self.peer_connections = []
 
     def run(self):
         # 监听端口，等待其他peer建立其的链接
@@ -383,6 +423,7 @@ class ClientMonitor(threading.Thread):
             logger.debug('get new socket from listener port, addr is {}'.format(addr))
             # 开启新线程建立链接
             peer_connection = PeerConnection(new_socket,queue_lock)
+            self.peer_connections.append(peer_connection)
             peer_connection.start()
 
 
@@ -411,3 +452,18 @@ if __name__ == "__main__":
     logger.info('in file client.py')
     logger.debug('test case (NULL) running...')
     logger.debug('test case finish')
+
+
+
+
+#评估传输速度并进行unchoking需要有间隔地进行，以避免过于频繁的切换choke状态，故使用独立进程完成防止阻塞其他工作
+class UnchokeManager(threading.Thread):
+    def __init__(self, client):
+        threading.Thread.__init__(self)
+        self.client = client
+        self.unchoke_interval = 30  # seconds
+
+    def run(self):
+        while True:
+            time.sleep(self.unchoke_interval)
+            self.client.manage_unchoking()
