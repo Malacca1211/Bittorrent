@@ -41,7 +41,6 @@ COMPLETED_EVENT = 'completed'
 # 全局变量
 left_pieces = queue.Queue(0)
 queue_lock = threading.Lock()
-pieces_manager = 0
 
 class PeerConnection(threading.Thread):
     '''
@@ -248,6 +247,9 @@ class Client(threading.Thread):
         self.metadata = torrent.read_torrent_file(torrent_file_name)
         logger.info(f"Tracker IP: {self.metadata['announce']}; port: {self.metadata['port']}")
         self.pieces_num = len(self.metadata['info']['piece_hash'])
+        self.task_queue = queue.Queue()
+        self.piece_rarity = {}
+        self.rarest_pieces = {}
         # TODO:bitfield需要思考如何处理，这个应该能够被各个连接访问
         self.bitfield = bitarray.bitarray([0 for _ in range(1, self.pieces_num+1)])
         # 得到本机ip并且作为客户端的成员变量存进来
@@ -262,6 +264,7 @@ class Client(threading.Thread):
         # TODO:没有什么特别好的解决方法
         global pieces_manager
         pieces_manager = pieceManager(torrent_file_name)
+        
 
 
     def load_config_file(self, config_file_name):
@@ -278,7 +281,7 @@ class Client(threading.Thread):
     def run(self):
         logger.info('client side run...')
         # 从bitfield中初始化队列，将任务放到队列中等待连接去执行
-        self.from_bitfield_setup_queue()
+        
         logger.info('initing the queue ..... finished!')
         # 得到所有的peer列表。存在self.peerListResponse里。
         self.get_peers_list()
@@ -286,12 +289,19 @@ class Client(threading.Thread):
         # 向N个peer主动发起链接
         self.establish_link()
         # 启动监听线程
+        self.client_monitor.start()
+        # 开始调度线程
+
+        self.init_piece_rarity()
+        # 初始化每个 piece 的稀有度
+        self.from_bitfield_setup_queue()
 
         self.unchoke_manager = UnchokeManager(self)
         self.unchoke_manager.start()
 
-        self.client_monitor.start()
-        # 开始调度线程
+
+        
+        
         while True:
             """
             调度线程有两件事需要做：
@@ -363,8 +373,9 @@ class Client(threading.Thread):
             peer_connection.start()
     
     def from_bitfield_setup_queue(self):
-        """ 根据现有的bitfield，将没有的块的（索引，哈希值）二元组push进全局队列中 """
-        for i in range(0, self.pieces_num):
+        """ 根据现有的bitfield，并按照稀有度的顺序，将没有的块的（索引，哈希值）二元组push进全局队列中 """
+        for piece in self.rarest_pieces:
+            i=piece[0]
             if pieces_manager.bitfield[i] == 0:
                 logger.info('put the {}:{} into queue !'.format(i,self.metadata['info']['piece_hash'][i]))
                 left_pieces.put((i,self.metadata['info']['piece_hash'][i]))
@@ -400,6 +411,16 @@ class Client(threading.Thread):
                     peer.peer_choked = True
             
             peer.reset_upload_speed()
+    def init_piece_rarity(self):
+        # 初始化 piece 稀有度统计
+        for peer in self.client_monitor.peer_connections:
+            for i in range(len(peer.peer_bitfield)):
+                if peer.peer_bitfield[i] == '1':
+                    if i in self.piece_rarity:
+                        self.piece_rarity[i] += 1
+                    else:
+                        self.piece_rarity[i] = 1
+        self.rarest_pieces = sorted(self.piece_rarity.items(), key=lambda item: item[1])
 
 
 class ClientMonitor(threading.Thread):
