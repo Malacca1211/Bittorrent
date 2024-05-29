@@ -76,4 +76,5 @@ SERVER_IP = utilities.get_host_ip()
 3. `demo/seed`, `demo/c2` 对应python文件的 *IP* 也得修改
 
 ### 如何运行：
+先生成对应拓扑结构，进入`demo/mininet`后`sudo python test.py` 即可（对应代码可改），然后xterm name 打开name节点（主机）的终端
 在对应xterm打开的终端下进入对应的文件夹（和端到端一样）运行对应的文件即可
