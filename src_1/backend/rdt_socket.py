@@ -50,7 +50,7 @@ class rdt_socket(object):
                 return body
         while True:
             data = self.s.recv(1024)
-            logger.debug('Received raw tcp data len {}'.format(len(data)))
+            logger.info('Received raw tcp data len {}'.format(len(data)))
             if data:
                 self.databuf += data
                 while True:

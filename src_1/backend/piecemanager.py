@@ -22,7 +22,7 @@ class pieceManager():
         如果文件已经下载完成，就将已有的数据块存成文件
         merge_data_to_file()
 
-        存一个块到“$(file_name)_data/$(piece_index)"中
+        存一个块到“$(file_name)_pieces/$(piece_index)"中
         save_piece_data(piece_index, raw_data)
 
         将当前的所有块存起来
@@ -38,6 +38,7 @@ class pieceManager():
     """
     # 初始化文件管理器的时候应该需要用这几个参数初始化：文件名，哈希表，块长度，bitfield可以自己生成
     def __init__(self, torrent_file_name):
+        self.file_exist = False
         """ 需要传入种子文件文件名，通过种子文件初始化，默认没有文件 """
         metadata = torrent.read_torrent_file(torrent_file_name)
         self.torrent_file_name = torrent_file_name
@@ -53,10 +54,10 @@ class pieceManager():
             self.load_previous_all_pieces()
 
     def save_piece_data(self, piece_index, save_path=''):
-        """ 将一个piece数据块存到文件夹save_path中，默认存到$(FILE_NAME)_data/$(piece_number)中，如test.txt的第0块存到test.txt_data/0中 """
+        # !将一个已经接收piece数据块存到文件夹save_path中，默认存到$(FILE_NAME)_pieces/$(piece_number)中，如test.txt的第0块存到test.txt_pieces/0中
         # TODO:文件名中有点‘。’,不太好？？
         if not save_path:
-            save_path = self.file_name+'_data/'
+            save_path = self.file_name+'_pieces/'
         if not os.path.exists(save_path):
             os.mkdir(save_path)
         with open(save_path+str(piece_index), 'wb') as f:
@@ -68,9 +69,9 @@ class pieceManager():
         load_path：文件数据存放路径,末尾默认含有/
         piece_index: 对应数据块索引
         """
-        # 动态默认值的实现，默认路径为  test.txt_data/
+        # 动态默认值的实现，默认路径为  test.txt_pieces/
         if not load_path:
-            load_path = self.file_name+'_data/'
+            load_path = self.file_name+'_pieces/'
         # TODO:文件不存在，异常处理？
         with open(load_path+str(piece_index), 'rb') as f:
             piece_data = f.read()
@@ -82,9 +83,9 @@ class pieceManager():
     
     def load_previous_all_pieces(self, load_path=''):
         """ 寻找指定路径下的文件数据，并加载进来 """
-        # 动态默认值的实现，默认路径为  test.txt_data/
+        # 动态默认值的实现，默认路径为  test.txt_pieces/
         if not load_path:
-            load_path = self.file_name+'_data/'
+            load_path = self.file_name+'_pieces/'
         if not os.path.exists(load_path):
             os.mkdir(load_path)
         # 得到路径下的所有文件名的列表

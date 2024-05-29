@@ -62,7 +62,7 @@ class PeerConnection(threading.Thread):
 
     def run(self):
         """ 连接 线程主函数 """
-        # TODO:这里是需要读全局的bitfield的，发送一个全局的bitfield
+        # TODO:这里是需要读全局的bitfield的，发送一个全局的bitfield(一方拥有的文件区块信息)
         # print(f"The bitfield: {pieces_manager.get_bitfield().tolist()}")
         self.send_message(Bitfield(pieces_manager.get_bitfield().tolist()))
         self.initial_flag = 1
@@ -76,7 +76,7 @@ class PeerConnection(threading.Thread):
         while True:
             recv_msg = self.recv_message()
             if type(recv_msg) == ServerClose:
-                logger.warning('server close.')
+                logger.warning(' ============== server close.============== ')
                 return
             # 由于这个是阻塞接受消息，不需要读取不到就循环
             
@@ -103,7 +103,7 @@ class PeerConnection(threading.Thread):
                 # 这里是直接设置我不choke，对方interested
                 send_available = 1
                 
-                logger.debug('I know you are interested with me. ')
+                logger.debug('============== I know you are interested with me.==============  ')
                 if send_available == 1:
                     self.send_file_state.to_01()
                     self.send_message(UnChoke())    
@@ -163,7 +163,7 @@ class PeerConnection(threading.Thread):
         """ 传入message对象，并转成二进制发送 """
         self.socket.sendBytes(msg.to_bytes())
         logger.info('--------------------------------------------------')
-        logger.debug('[ send from {} to {}] : '.format(self.socket.s.getsockname(), self.socket.s.getpeername())+ msg.to_json_string())
+        logger.info('[ send from {} to {}] : '.format(self.socket.s.getsockname(), self.socket.s.getpeername())+ msg.to_json_string())
         logger.info('--------------------------------------------------')
 
     def recv_message(self):
@@ -172,7 +172,7 @@ class PeerConnection(threading.Thread):
         msg = bytes_to_message(self.socket.recvBytes())
         logger.debug('end receive message')
         logger.info('--------------------------------------------------')
-        logger.debug('[ recv ] from {} to {} : '.format(self.socket.s.getpeername(), self.socket.s.getsockname()) +  msg.to_json_string())
+        logger.info('[ recv ] from {} to {} : '.format(self.socket.s.getpeername(), self.socket.s.getsockname()) +  msg.to_json_string())
         logger.info('--------------------------------------------------')
         return msg
     
@@ -187,7 +187,7 @@ class PeerConnection(threading.Thread):
         """
         if left_pieces.empty():
             logger.debug('The queue is empty.')
-            return 0
+            return 0  
         # 如果队列不空，则在队列中取一个元素
         # TODO:拿出来与放回去之间应该要加锁，因为会出现这样的情况
         # 拿出来后，别的连接因为队列空了就断开连接，但实际上我取到的这个快只有那一个断开的连接对应的peer才能够下载到。
@@ -281,18 +281,20 @@ class Client(threading.Thread):
             if pieces_manager.is_completed():
                 if pieces_manager.merge_full_data_to_file():
                     self.end = time.time()
-                    print("Download time is : ",str(self.end-self.begin))
+                    print(f"======= Download time is : {self.end - self.begin}s =======")
                     pieces_manager.save_current_all_pieces()
                     print('This file has been downloaded fully and correctly!')
                     break
                 else:
                     print('This download file is damaged!')
                     break
+            
         # TODO:不会停止线程
         while True:
-            a = input('enter q to exit!')
+            a = input('enter q to exit!\n')
             if a == 'q':
-                print(threading.enumerate())
+                print(f'The all threads: {threading.enumerate()}')
+                print("Quit the client sueecssfully!")
 
                 self.disconnect_to_server()
                 ## use to exit the whole process
@@ -332,13 +334,14 @@ class Client(threading.Thread):
             #if idx >= 4: return # TODO: add constant here
             peer_ip = peer_info['peer-ip']
             peer_port = peer_info['peer-port']
-            print('trying to connect to peer {}:{}'.format(peer_ip, peer_port))
-            logger.debug('trying to connect to peer {}:{}'.format(peer_ip, peer_port))
+            print('======= trying to connect to peer {}:{} ======='.format(peer_ip, peer_port))
+            logger.debug('========= trying to connect to peer {}:{} ======='.format(peer_ip, peer_port))
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((peer_ip, peer_port))
             # 拉起新的线程管理该tcp
             peer_connection = PeerConnection(sock,queue_lock)
-            logger.debug('connect to {}:{} finish. tcp start'.format(peer_ip, peer_port))
+            logger.info('connect to {}:{} finish. tcp start'.format(peer_ip, peer_port))
+            print('======= connect to {}:{} finish. tcp start ======='.format(peer_ip, peer_port))
             peer_connection.start()
     
     def from_bitfield_setup_queue(self):
@@ -381,7 +384,7 @@ class ClientMonitor(threading.Thread):
         while True:
             # 阻塞型接受新链接
             (new_socket, addr) = listen_socket.accept()
-            logger.debug('get new socket from listener port, addr is {}'.format(addr))
+            logger.info('get new socket from listener port, addr is {}'.format(addr))
             # 开启新线程建立链接
             peer_connection = PeerConnection(new_socket,queue_lock)
             peer_connection.start()
@@ -390,11 +393,11 @@ class ClientMonitor(threading.Thread):
 def check_piece_hash_and_update(recv_piece_index,recv_raw_data):
     """ 检查收到的元数据是否和对应数据块的哈希值一致,如果一致则更新并返回1，否则就返回0 """
     if str(hashlib.sha1(recv_raw_data).digest()) == pieces_manager.hash_table[recv_piece_index]:
-        logger.debug('{} data received without error'.format(recv_piece_index))
+        logger.info('======= Piece index: {} data received without error in hash check ======='.format(recv_piece_index))
         pieces_manager.update_data_field(recv_piece_index, recv_raw_data)
         return 1
     else :
-        logger.debug('{} data received with error'.format(recv_piece_index))
+        logger.info('====== Piece index: {} data received with error in hash check! ======='.format(recv_piece_index))
         return 0
 
 

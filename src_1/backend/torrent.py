@@ -7,7 +7,6 @@ same_as_torrent(torrent_file_name, download_file) 检测种子文件元数据与
 
 
 import json
-import socket
 import bitarray
 import hashlib
 import os

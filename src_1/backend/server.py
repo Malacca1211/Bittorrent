@@ -25,10 +25,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 
-#! nt: Some parameters of Tracker, you can change there
-# SERVER_IP = utilities.get_host_ip()
+#TODO: Some parameters of Tracker, you can change there
+SERVER_IP = utilities.get_host_ip()
 #! Mininet Test
-SERVER_IP = '10.0.0.1'
+# SERVER_IP = '10.0.0.1'
 SERVER_PORT = 5000
 MAX_TCP_LINK = 8
 
@@ -112,7 +112,7 @@ class Server(threading.Thread):
 
                 if id not in [peer.id for peer in available_peers]:
                     available_peers.append(Peer(ip, port, id))
-                    logger.debug('Peer: %s has connectd with Tracker', (ip, port, id))
+                    logger.info('======= Peer: %s has connectd with Tracker =======', (ip, port, id))
                 else:
                     logger.warning('peer already in list, ip %s port %d id %s', 
                         ip, 
@@ -120,8 +120,8 @@ class Server(threading.Thread):
                         id)
 
             elif event == 'completed':
-                logger.debug('get disconnect request')
-                logger.info('ip:%s, port:%d, id:%s', ip, port, id)
+                # logger.debug('get disconnect request')
+                logger.info('======== get disconnect request from ip:%s, port:%d, id:%s ========', ip, port, id)
                 try:
                     available_peers.remove(Peer(ip, port, id))
                 except ValueError as e:
@@ -133,8 +133,8 @@ class Server(threading.Thread):
                     }))
                 rdt_s.sendBytes(utilities.objEncode(self.COMPLETE_ACK()))
                 client_socket.close()
-                logger.debug("disconnect finished, id:%s", id)
-                logger.debug(available_peers)
+                logger.info("======== disconnect finished, id:%s ========", id)
+                logger.debug(f'Now availavle_peers: \n {available_peers}')
             else:
                 logger.critical("warning, known event {}".format(event), json_data)
                 client_socket.send(utilities.objEncode({
