@@ -41,6 +41,7 @@ COMPLETED_EVENT = 'completed'
 # 全局变量
 left_pieces = queue.Queue(0)
 queue_lock = threading.Lock()
+queue_seted = threading.Event()
 
 class PeerConnection(threading.Thread):
     '''
@@ -52,16 +53,15 @@ class PeerConnection(threading.Thread):
         threading.Thread.__init__(self)
         self.socket = rdt_socket.rdt_socket(sock)
         self.queue_lock = lock
-        # self.peer_bitfield = 0
-        
+        self.peer_bitfield = 0
+        self.update_event = threading.Event()
         self.request_piece_index = 0
         self.request_piece_hash = 0
-        
+
         self.data_sent = 0
         self.start_time = time.time()
         self.peer_choked = True
         self.is_interested = False
-
         logger.info('peer init connection %s', self.socket.s.getsockname())
 
     def run(self):
@@ -88,6 +88,7 @@ class PeerConnection(threading.Thread):
             if self.initial_flag == 1:
                 if type(recv_msg) == Bitfield:
                     self.peer_bitfield = bitarray.bitarray(recv_msg.bitfield)
+                    self.update_event.set()
                     if (self.get_available_piece_request()):
                         # 我已经从队列里取出了我需要并且对面有的块
                         # 对面还是choke，我变成了interested
@@ -191,6 +192,8 @@ class PeerConnection(threading.Thread):
                 对面的bitfield有，就修改成员变量（当前请求块）,并返回1
                 否则就放回队列中，停5秒再拿
         """
+        #等待需求队列初始化
+        queue_seted.wait()
         if left_pieces.empty():
             logger.debug('The queue is empty.')
             return 0
@@ -221,7 +224,6 @@ class PeerConnection(threading.Thread):
                 time.sleep(random.random())
                 # print(list(left_pieces.queue))
                 continue
-    
     def get_upload_speed(self):
         elapsed_time = time.time() - self.start_time
         if elapsed_time > 0:
@@ -233,6 +235,10 @@ class PeerConnection(threading.Thread):
     def reset_upload_speed(self):
         self.data_sent = 0
         self.start_time = time.time()
+    
+    def wait_for_bitfield_update(self):
+        self.update_event.wait()  # 等待 bitfield 更新
+        
 
 
 class Client(threading.Thread):
@@ -250,6 +256,7 @@ class Client(threading.Thread):
         self.task_queue = queue.Queue()
         self.piece_rarity = {}
         self.rarest_pieces = {}
+        self.peer_connections = []
         # TODO:bitfield需要思考如何处理，这个应该能够被各个连接访问
         self.bitfield = bitarray.bitarray([0 for _ in range(1, self.pieces_num+1)])
         # 得到本机ip并且作为客户端的成员变量存进来
@@ -280,21 +287,20 @@ class Client(threading.Thread):
 
     def run(self):
         logger.info('client side run...')
-        # 从bitfield中初始化队列，将任务放到队列中等待连接去执行
-        
         logger.info('initing the queue ..... finished!')
         # 得到所有的peer列表。存在self.peerListResponse里。
         self.get_peers_list()
         logger.info('ok get list')
         # 向N个peer主动发起链接
         self.establish_link()
+        #初始化piece稀有度
+        self.init_piece_rarity()
+        # 从bitfield中初始化队列，将任务放到队列中等待连接去执行
+        self.from_bitfield_setup_queue()
+        queue_seted.set()
         # 启动监听线程
         self.client_monitor.start()
         # 开始调度线程
-
-        self.init_piece_rarity()
-        # 初始化每个 piece 的稀有度
-        self.from_bitfield_setup_queue()
 
         self.unchoke_manager = UnchokeManager(self)
         self.unchoke_manager.start()
@@ -308,7 +314,7 @@ class Client(threading.Thread):
             1. 【TODO:暂时不实现，为了先测试】 建立连接，如果连接数少于MAX，就尝试获取更多的可用peer，从中找到自己没有连的peer，然后连接他 
             2. 当文件传输完成，比对哈希值，并存好文件，输出相应信息，等待用户主动结束
             """
-            # print(pieces_manager.is_completed())  
+            # print(pieces_manager.is_completed())
             if pieces_manager.is_completed():
                 if pieces_manager.merge_full_data_to_file():
                     self.end = time.time()
@@ -369,13 +375,15 @@ class Client(threading.Thread):
             sock.connect((peer_ip, peer_port))
             # 拉起新的线程管理该tcp
             peer_connection = PeerConnection(sock,queue_lock)
+            self.peer_connections.append(peer_connection)
             logger.debug('connect to {}:{} finish. tcp start'.format(peer_ip, peer_port))
             peer_connection.start()
     
     def from_bitfield_setup_queue(self):
-        """ 根据现有的bitfield，并按照稀有度的顺序，将没有的块的（索引，哈希值）二元组push进全局队列中 """
+        """ 根据现有的bitfield，将没有的块的（索引，哈希值）二元组push进全局队列中 """
         for piece in self.rarest_pieces:
             i=piece[0]
+        #for i in range(0,self.pieces_num):
             if pieces_manager.bitfield[i] == 0:
                 logger.info('put the {}:{} into queue !'.format(i,self.metadata['info']['piece_hash'][i]))
                 left_pieces.put((i,self.metadata['info']['piece_hash'][i]))
@@ -396,7 +404,7 @@ class Client(threading.Thread):
     
     def manage_unchoking(self):
         # 定期计算每个对等方的上传速度，并选择最快的几个进行unchoke
-        peer_speeds = [(peer, peer.get_upload_speed()) for peer in self.client_monitor.peer_connections]
+        peer_speeds = [(peer, peer.get_upload_speed()) for peer in self.peer_connections]
         peer_speeds.sort(key=lambda x: x[1], reverse=True)
         top_peers = peer_speeds[:4]  # 假设我们选择最快的4个对等方进行unchoke
         
@@ -412,15 +420,19 @@ class Client(threading.Thread):
             
             peer.reset_upload_speed()
     def init_piece_rarity(self):
-        # 初始化 piece 稀有度统计
-        for peer in self.client_monitor.peer_connections:
-            for i in range(len(peer.peer_bitfield)):
-                if peer.peer_bitfield[i] == '1':
+        # piece 稀有度统计
+        self.piece_rarity.clear()
+        for peer in self.peer_connections:
+            peer.wait_for_bitfield_update()  # 等待 bitfield 更新完成
+            peer_bitfield= peer.peer_bitfield
+            for i in range(len(peer_bitfield)):
+                if peer_bitfield[i] == 1:
                     if i in self.piece_rarity:
                         self.piece_rarity[i] += 1
                     else:
                         self.piece_rarity[i] = 1
         self.rarest_pieces = sorted(self.piece_rarity.items(), key=lambda item: item[1])
+        
 
 
 class ClientMonitor(threading.Thread):
@@ -431,7 +443,6 @@ class ClientMonitor(threading.Thread):
         threading.Thread.__init__(self)
         self.client_ip = client_ip
         self.client_port = client_port
-        self.peer_connections = []
 
     def run(self):
         # 监听端口，等待其他peer建立其的链接
@@ -445,7 +456,6 @@ class ClientMonitor(threading.Thread):
             logger.debug('get new socket from listener port, addr is {}'.format(addr))
             # 开启新线程建立链接
             peer_connection = PeerConnection(new_socket,queue_lock)
-            self.peer_connections.append(peer_connection)
             peer_connection.start()
 
 
@@ -474,10 +484,7 @@ if __name__ == "__main__":
     logger.info('in file client.py')
     logger.debug('test case (NULL) running...')
     logger.debug('test case finish')
-
-
-
-
+    
 #评估传输速度并进行unchoking需要有间隔地进行，以避免过于频繁的切换choke状态，故使用独立进程完成防止阻塞其他工作
 class UnchokeManager(threading.Thread):
     def __init__(self, client):
