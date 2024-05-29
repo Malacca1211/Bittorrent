@@ -1,4 +1,4 @@
-# Notation:
+# Common problem:
 - kill process:
 ```shell
 netstat -nl | grep 6667

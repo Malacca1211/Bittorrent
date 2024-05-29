@@ -26,9 +26,9 @@ logger.setLevel(logging.DEBUG)
 
 
 #TODO: Some parameters of Tracker, you can change there
-SERVER_IP = utilities.get_host_ip()
+# SERVER_IP = utilities.get_host_ip()
 #! Mininet Test
-# SERVER_IP = '10.0.0.1'
+SERVER_IP = '10.0.0.1'
 SERVER_PORT = 5000
 MAX_TCP_LINK = 8
 

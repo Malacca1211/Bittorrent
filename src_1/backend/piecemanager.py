@@ -124,8 +124,14 @@ class pieceManager():
     def load_exist_full_file_data(self):
         """ 如果一个文件已经存在，则加载进来，作为已经下载完整的文件 """
         if os.path.isfile(self.file_name):
-            print('file {} exist!'.format(self.file_name) )
+            self.file_exist = True
+            print('======= file {} exist! ======= '.format(self.file_name) )
             self.load_download_file_data(self.file_name)
+            return True
+        elif os.path.isfile('download_'+self.file_name):
+            self.file_exist = True
+            print('======= file {} exist! ======= '.format('download_' + self.file_name) )
+            self.load_download_file_data('download_' + self.file_name)
             return True
         return False
 

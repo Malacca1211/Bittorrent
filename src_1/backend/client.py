@@ -316,14 +316,17 @@ class Client(threading.Thread):
             """
             # print(pieces_manager.is_completed())
             if pieces_manager.is_completed():
-                if pieces_manager.merge_full_data_to_file():
+                if pieces_manager.file_exist:
+                    pieces_manager.save_current_all_pieces()
+                    break
+                elif pieces_manager.merge_full_data_to_file():
                     self.end = time.time()
                     print(f"======= Download time is : {self.end - self.begin}s =======")
                     pieces_manager.save_current_all_pieces()
-                    print('This file has been downloaded fully and correctly!')
+                    print('======= This file has been downloaded fully and correctly! ========')
                     break
                 else:
-                    print('This download file is damaged!')
+                    print('======== This download file is damaged! =======')
                     break
             
         # TODO:不会停止线程

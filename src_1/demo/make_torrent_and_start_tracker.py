@@ -11,7 +11,8 @@ from torrent import * #! 此处报错可忽略
 
 
 full_file = './seed/test.mp4'
-TRACKER_IP = '127.0.0.1'
+# TRACKER_IP = '127.0.0.1'
+TRACKER_IP = '10.0.0.1'
 TRACKER_PORT = 5000
 # 制作种子文件，默认存到当前目录下
 make_torrent_file(full_file,  tracker_ip = TRACKER_IP, tracker_port = TRACKER_PORT)
