@@ -1,12 +1,10 @@
-# Common problem:
-- kill process:
+# 常见错误:
+- 运行`mininet`端口被占用，杀死对应进程:
 ```shell
 netstat -nl | grep 6667
 sudo fuser -k 6653/tcp
 ```
 
-- create mininet topography
-`sudo mn --topo=single,3`
 
 # 端到端测试：
 ## `C2` 从 `seed` 接收文件
@@ -78,3 +76,18 @@ SERVER_IP = utilities.get_host_ip()
 ### 如何运行：
 先生成对应拓扑结构，进入`demo/mininet`后`sudo python test.py` 即可（对应代码可改），然后xterm name 打开name节点（主机）的终端
 在对应xterm打开的终端下进入对应的文件夹（和端到端一样）运行对应的文件即可
+
+#### c2 从 seed 获取文件
+图中可以看出时间大约为：15.5s
+> ![](2024-05-29-13-27-08.png)
+
+#### c3 同时从 c2 和 seed 获取文件：
+图中可以看出时间大约为：6.2s
+> ![](2024-05-29-13-27-39.png)
+
+
+### 运行前后对比：
+#### 前:
+> ![](2024-05-29-13-29-58.png)
+#### 后：
+>![](2024-05-29-13-29-28.png)
