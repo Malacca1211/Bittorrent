@@ -431,8 +431,8 @@ class Client(threading.Thread):
         top_peers = peer_speeds[:UNCHOKE_NUM]  # 选择最快的几个对等方进行unchoke
         #每次尝试一个随机的对等方
         if OPTIMISTIC_UNCHOKING == True:
-            if len(peer_speeds) > UNCHOKE_NUM+1:
-                top_peers.append(peer_speeds[random.randint(UNCHOKE_NUM,len(top_peers)-1)])
+            if len(peer_speeds) > UNCHOKE_NUM:
+                top_peers.append(peer_speeds[random.randint(UNCHOKE_NUM,len(peer_speeds)-1)])
         for peer, speed in peer_speeds:
             if (peer, speed) in top_peers:
                 if peer.peer_choked:
