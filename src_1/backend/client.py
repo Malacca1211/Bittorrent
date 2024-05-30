@@ -38,7 +38,7 @@ UNCHOKE_TIME = 30 #seconds
 RAREST_FIRST = True
     #启用RAREST_FIRST
 OPTIMISTIC_UNCHOKING=True
-    #启用乐观解除阻塞，需要先启用RAREST_FIRST
+    #启用乐观解除阻塞，需要先启用UNCHOKING
 
 # 这些是常量，不会变动，不需要放到配置文件中
 INIT_AM_INTERESTED = False
