@@ -15,6 +15,7 @@ from piecemanager import pieceManager
 from message import *
 from state import *
 import logging
+import random
 
 
 logging.basicConfig(
@@ -29,6 +30,15 @@ logger.disabled = True
 CLIENT_PORT = 5555
 CLIENT_LISTEN_MAX = 8
 FILE_HEADER_SIZE = 8
+
+# 以下是优化策略相关的常数
+UNCHOKE_NUM = 4
+UNCHOKE_TIME = 30 #seconds
+    #将UNCHOKE_TIME设置为0可以禁用UNCHOKING
+RAREST_FIRST = True
+    #启用RAREST_FIRST
+OPTIMISTIC_UNCHOKING=True
+    #启用乐观解除阻塞，需要先启用UNCHOKING
 
 # 这些是常量，不会变动，不需要放到配置文件中
 INIT_AM_INTERESTED = False
@@ -388,12 +398,17 @@ class Client(threading.Thread):
     
     def from_bitfield_setup_queue(self):
         """ 根据现有的bitfield，将没有的块的（索引，哈希值）二元组push进全局队列中 """
-        for piece in self.rarest_pieces:
-            i=piece[0]
-        #for i in range(0,self.pieces_num):
-            if pieces_manager.bitfield[i] == 0:
-                logger.info('put the {}:{} into queue !'.format(i,self.metadata['info']['piece_hash'][i]))
-                left_pieces.put((i,self.metadata['info']['piece_hash'][i]))
+        if RAREST_FIRST == True:
+            for piece in self.rarest_pieces:
+                i=piece[0]
+                if pieces_manager.bitfield[i] == 0:
+                    logger.info('put the {}:{} into queue !'.format(i,self.metadata['info']['piece_hash'][i]))
+                    left_pieces.put((i,self.metadata['info']['piece_hash'][i]))
+        else:
+            for i in range(0,self.pieces_num):
+                if pieces_manager.bitfield[i] == 0:
+                    logger.info('put the {}:{} into queue !'.format(i,self.metadata['info']['piece_hash'][i]))
+                    left_pieces.put((i,self.metadata['info']['piece_hash'][i]))
     
     def get_id(self):
         """ 使用客户端自己的信息生成自己的id """
@@ -413,8 +428,11 @@ class Client(threading.Thread):
         # 定期计算每个对等方的上传速度，并选择最快的几个进行unchoke
         peer_speeds = [(peer, peer.get_upload_speed()) for peer in self.peer_connections]
         peer_speeds.sort(key=lambda x: x[1], reverse=True)
-        top_peers = peer_speeds[:4]  # 假设我们选择最快的4个对等方进行unchoke
-        
+        top_peers = peer_speeds[:UNCHOKE_NUM]  # 选择最快的几个对等方进行unchoke
+        #每次尝试一个随机的对等方
+        if OPTIMISTIC_UNCHOKING == True:
+            if len(peer_speeds) > UNCHOKE_NUM:
+                top_peers.append(peer_speeds[random.randint(UNCHOKE_NUM,len(peer_speeds)-1)])
         for peer, speed in peer_speeds:
             if (peer, speed) in top_peers:
                 if peer.peer_choked:
@@ -497,9 +515,10 @@ class UnchokeManager(threading.Thread):
     def __init__(self, client):
         threading.Thread.__init__(self)
         self.client = client
-        self.unchoke_interval = 30  # seconds
 
     def run(self):
         while True:
-            time.sleep(self.unchoke_interval)
+            if UNCHOKE_TIME == 0:
+                break
+            time.sleep(UNCHOKE_TIME)
             self.client.manage_unchoking()
